@@ -1,0 +1,117 @@
+---
+title: "How 2019 Canadian Federal Election would be different if everyone voted"
+author: "zhixin zhu"
+date: "2020/12/20"
+output:
+  html_document:
+    df_print: paged
+  bookdown::pdf_document2: default
+  pdf_document: default
+bibliography: references.bib
+nocite: '@*'
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(knitr)
+```
+
+# Abstract
+In this statistic analysis report, we use the Canadian Election study and General Social Study with post-stratification that we obtain to estimate which party will win Canadian Federal Election in 2019, Liberal Party or Conservative Party. We would generate a new data after doing post-stratification in General Social Study. Additionally, apply the logistic regression model for this statistic analysis.
+
+Keywords: Canadian Federal Election, General Social Study, Canadian Election Study, 2019, post-stratification
+
+\newpage
+
+# Introduction
+Canadian Federal election is in relation to which party candidate will lead Canadian government in the next four years. Thus, many electorates concerned themselves with the election. Although Canadian Federal election has been finished, The party of liberty will continue controlling the government, we still wonder whether we can use Canadian Election Study to estimate the election votes outcome before the election.
+In this case, we will  use the logistic regression model to estimate the election outcome, since the two kinds of variable which are age and sex including the categorical variables, logistic regression model is more convenient and directly. At first, we download the GSS data in 2017 and cleaned up it to a census data that we need for post-stratification calculation, at the same time, installed the ces data from obtaining r code in https://hodgettsp.github.io/cesR/. After that , we do the data manipulation to change the observation of the survey data, then use the logistic regression model with the two variable age and sex. Finally, for eliminate the proportion difference between the sample survey data and the real electorate proportion, we use the post-stratification to model the outcome for real population.
+
+\newpage
+
+# Data
+Firstly, we install the CES survey data in rstudio, then import 2019 CES online survey. After that, based on General social study data, we select the age sex two variables, since people who have different ages will have bias in two parties, so as to gender. For data manipulation, we change the observation in gender from number to matching name, while mutate a new variable named sex, and distinguish electorates vote party by 1 and 0.
+```{r}
+install.packages("devtools")
+devtools::install_github("hodgettsp/cesR")
+suppressWarnings(suppressMessages(library("cesR")))
+library(tidyverse)
+library("cesR")
+```
+
+https://hodgettsp.github.io/cesR/
+
+
+
+```{r}
+# import the online survey data
+
+get_ces("ces2019_web")
+
+
+# import the clean census Data
+census_data <- read_csv("census_data.csv")
+
+
+# data manipulation for survey data
+
+ces2019_web2 <- ces2019_web %>% mutate(sex = case_when(cps19_gender == 1 ~ "Male",
+                                                       cps19_gender == 2 ~ "Female",
+                                                       cps19_gender == 3 ~ "Other"),
+                                       age = cps19_age,                                   
+                                       choosing_party = ifelse(cps19_votechoice == 1,1,0))
+
+```
+
+#model
+In the model for estimating, we make the logistic model to deal with the age and sex two variables, to figure out how they influence the vote party. Since observation in variable sex are categorical, the logistic model is better tha  linear regression model. Using the logistic model to estimate the relationship between age, sex and final vote party.
+```{r}
+
+# Creating the Model for ces
+model <- glm(choosing_party ~ age + sex, 
+               data=ces2019_web2, family="binomial")
+
+```
+
+#post-stratification
+Since the sample data has difference to the reality. We need to use the post-stratification to estimate the election outcome more accurately.
+```{r}
+
+# Here I will perform the post-stratification calculation
+census_data$estimate <-
+  model %>%
+  predict(newdata = census_data, type="response")
+
+census_data %>%
+  mutate(alp_predict_prop = estimate*n) %>%
+  summarise(alp_predict = sum(alp_predict_prop)/sum(n))
+```
+
+
+# discussion
+
+The result of post-stratification is 0.2858, which refer that 28.58% voters will choose liberty party, most electorate will vote for conservative. After building the logistic model between age, sex and vote party. We perform the post-stratification calculation to estimate how much proportion voters will vote for liberty party. It shows that 28.58% electorates will choose liberty party. It seems that conservative party has obvious merits in the election. While assuming the rest voters will all choose conservative party. However, some votes may choose other party such as green party, although the proportion will not be decisive. It exist some other situations that not be appropriately considered in this model.
+
+# weakness and limitations
+
+ We only select two variables in the analysis report, since some other elements may influence the electorates decisions, which are ignored in this statistic analysis report. For example, education of electorate will influence their understanding for two parties policy, further influence their voting decisions.
+ 
+
+
+# References
+
+
+TO CITE THIS SURVEY FILE:
+
+- Stephenson, Laura B; Harell, Allison; Rubenson, Daniel; Loewen, Peter John, 2020, '2019 Canadian Election Study - Online Survey', https://doi.org/10.7910/DVN/DUS88V, Harvard Dataverse, V1
+
+- Stephenson, Laura, Allison Harrel, Daniel Rubenson and Peter Loewen. Forthcoming. 'Measuring Preferences and Behaviour in the 2019 Canadian Election Study,' Canadian Journal of Political Science.
+
+LINK: https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DUS88V
+
+
+
+
